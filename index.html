@@ -541,7 +541,7 @@
       lastEl.textContent = state.called.length ? String(state.called[state.called.length - 1]) : "—";
 
       if (chanceEl) {
-        if (myTotal && remaining > 0) chanceEl.textContent = Math.round(mineIn / remaining * 100) + "% win";
+        if (myTotal && remaining > 0) chanceEl.textContent = (mineIn / remaining * 100).toFixed(2) + "% win";
         else chanceEl.textContent = "—";
       }
 
