@@ -249,7 +249,6 @@
           <option value="5">5</option>
           <option value="6">6</option>
           <option value="8">8</option>
-          <option value="10">10</option>
         </select>
       </span>
       <span class="setgrp">
@@ -447,7 +446,7 @@
             if (typeof p.total !== "number" || p.total < 2) p.total = 400;
             if (typeof p.numPeople !== "number" || p.numPeople < 1 || p.numPeople > 6) p.numPeople = 1;
             if (typeof p.columns !== "number" || p.columns < 0) p.columns = 0;
-            if (p.columns > 10) p.columns = 10;
+            if (p.columns > 8) p.columns = 8;
             // Migrate the old single "mine" list into the owners map (Person 0).
             if (!p.owners || typeof p.owners !== "object") {
               p.owners = {};
@@ -760,6 +759,7 @@
     if (totalInput) {
       totalInput.value = String(TOTAL);
       totalInput.addEventListener("change", function () { setTotal(totalInput.value); });
+      totalInput.addEventListener("focus", function () { var el = this; setTimeout(function () { el.select(); }, 0); });
     }
 
     // "People" setting + person picker
@@ -795,6 +795,7 @@
     // "Highlight every Nth" setting
     if (nthInput) {
       if (state.highlightN > 0) nthInput.value = String(state.highlightN);
+      nthInput.addEventListener("focus", function () { var el = this; setTimeout(function () { el.select(); }, 0); });
       nthInput.addEventListener("input", function () {
         var v = parseInt(nthInput.value, 10);
         state.highlightN = (!v || v < 1) ? 0 : v;
