@@ -41,6 +41,7 @@
     display: flex; flex-direction: column;
     height: 100vh; height: 100dvh;
     overflow: hidden;
+    touch-action: manipulation;
   }
 
   header {
@@ -305,6 +306,12 @@
   window.onerror = function (m, src, line) {
     showFatal(m + " (line " + line + ")");
   };
+
+  // Block zooming (pinch + double-tap), including on iOS where the viewport tag is ignored.
+  document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener("gesturechange", function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener("gestureend", function (e) { e.preventDefault(); }, { passive: false });
+  document.addEventListener("touchmove", function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
   try {
     var TOTAL = 400;
