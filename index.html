@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0f172a">
+<title>Reverse Raffle</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Default theme values; the Theme switcher overrides these on :root via JS. */
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --tile: #334155;
+    --tile-text: #e2e8f0;
+    --accent: #f59e0b;
+    --accent-text: #0f172a;
+    --accent-soft: #fde68a;
+    --muted: #94a3b8;
+    --danger: #ef4444;
+    --win: #22c55e;
+    --mine: #f59e0b;
+    --mine-text: #0f172a;
+    --nth: #38bdf8;
+    --nth-text: #0f172a;
+    --overlay: rgba(15,23,42,.96);
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg, #0f172a);
+    color: var(--tile-text, #e2e8f0);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  body {
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    overflow: hidden;
+  }
+
+  header {
+    flex: 0 0 auto; z-index: 10;
+    background: var(--panel, #1e293b);
+    padding: 10px 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.4);
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  h1 {
+    margin: 0;
+    font-size: 18px; font-weight: 700;
+    letter-spacing: .5px;
+  }
+  #themeSel {
+    flex: 0 0 auto; max-width: 52%;
+    background: var(--tile, #334155); color: var(--tile-text, #e2e8f0);
+    border: 1px solid var(--muted, #94a3b8); border-radius: 8px;
+    padding: 7px 8px; font-size: 13px; font-weight: 700;
+    -webkit-appearance: none; appearance: none;
+  }
+  .setuprow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .setgrp { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .setlbl { font-size: 12px; color: var(--muted, #94a3b8); font-weight: 700; }
+  .setnum {
+    width: 60px; text-align: center; font-size: 13px; font-weight: 700; padding: 6px 4px;
+    border-radius: 6px; border: 1px solid var(--muted, #94a3b8);
+    background: var(--bg, #0f172a); color: var(--tile-text, #e2e8f0);
+    -webkit-appearance: none; appearance: none;
+  }
+
+  .countbar {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 8px; margin-bottom: 8px;
+  }
+  .stat { text-align: center; flex: 1; }
+  .stat .num { font-size: 22px; font-weight: 800; line-height: 1; }
+  .stat .lbl { font-size: 11px; color: var(--muted, #94a3b8); text-transform: uppercase; letter-spacing: .5px; }
+  .stat .num.accent { color: var(--accent, #f59e0b); }
+  .stat .num.danger { color: var(--danger, #ef4444); }
+  .chance { font-size: 15px; font-weight: 800; color: var(--win, #22c55e); margin-top: 4px; }
+
+  .btn {
+    border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 700;
+    padding: 0 16px;
+    background: var(--accent, #f59e0b); color: var(--accent-text, #0f172a);
+    cursor: pointer;
+  }
+  .btn:active { -webkit-transform: scale(.96); transform: scale(.96); }
+  .btn.ghost { background: var(--tile, #334155); color: var(--tile-text, #e2e8f0); }
+
+  #msg {
+    text-align: center; font-size: 13px;
+    color: var(--muted, #94a3b8);
+  }
+  #msg:not(:empty) { margin-top: 6px; }
+  #msg.err { color: var(--danger, #ef4444); }
+  #msg.ok { color: var(--win, #22c55e); }
+
+  main {
+    flex: 1 1 auto; min-height: 0;
+    overflow-y: auto; overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px;
+  }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .tile {
+    /* min-height keeps tiles visible even if aspect-ratio is unsupported */
+    min-height: 38px;
+    aspect-ratio: 1 / 1;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--tile, #334155);
+    border-radius: 8px;
+    font-size: 14px; font-weight: 700;
+    color: var(--tile-text, #e2e8f0);
+    cursor: pointer;
+    overflow: hidden;
+    -webkit-user-select: none; user-select: none;
+  }
+  .tile:active { -webkit-transform: scale(.9); transform: scale(.9); }
+  .tile.gone { display: none; }
+
+  .stat .num.mine { color: var(--mine, #f59e0b); }
+
+  /* People selector (shown in marking mode when more than one person) */
+  #peopleBar { display: none; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .pchip {
+    font-size: 12px; font-weight: 700; padding: 6px 10px;
+    border-radius: 7px; border: 2px solid transparent; cursor: pointer;
+  }
+  .pchip.active { border-color: var(--tile-text, #e2e8f0); }
+
+  /* Fixed-layout mode: called tiles vanish but keep their spot (no reshuffle) */
+  body.keep .tile.gone {
+    display: flex;
+    visibility: hidden;
+  }
+  /* Running "cleared history" strip */
+  .histbar { margin-top: 8px; }
+  .histhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+  .histtoggle {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--muted, #94a3b8); font-weight: 700;
+    background: none; border: none; padding: 0; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+  }
+  #histCaret { font-size: 9px; }
+  .histbar.collapsed #history { display: none; }
+  .histstrip {
+    display: flex; align-items: center; gap: 5px;
+    min-height: 34px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--tile, #334155) var(--panel, #1e293b);
+  }
+  .histstrip::-webkit-scrollbar { height: 7px; }
+  .histstrip::-webkit-scrollbar-track { background: var(--panel, #1e293b); border-radius: 6px; }
+  .histstrip::-webkit-scrollbar-thumb { background: var(--tile, #334155); border-radius: 6px; }
+  .histstrip::-webkit-scrollbar-thumb:active { background: var(--muted, #94a3b8); }
+  .histstrip:empty::after { content: "No numbers cleared yet"; color: var(--muted, #94a3b8); font-size: 12px; }
+  .chip {
+    flex: 0 0 auto; min-width: 30px; height: 30px; padding: 0 7px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--tile, #334155); color: var(--tile-text, #e2e8f0);
+    border-radius: 7px; font-size: 13px; font-weight: 700;
+  }
+  .chip.mine { box-shadow: inset 0 0 0 2px var(--accent-soft, #fde68a); }
+  .chip.hl { background: var(--nth, #38bdf8); color: var(--nth-text, #0f172a); }
+
+  /* "My Numbers" marking mode is active */
+  #mineBtn.active { background: var(--accent, #f59e0b); color: var(--accent-text, #0f172a); }
+  #layoutBtn.active { background: var(--accent, #f59e0b); color: var(--accent-text, #0f172a); }
+  body.marking header { box-shadow: 0 0 0 2px var(--accent, #f59e0b), 0 2px 10px rgba(0,0,0,.4); }
+
+  /* Winner overlay */
+  #winner {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
+    display: none;
+    align-items: center; justify-content: center;
+    flex-direction: column;
+    background: var(--overlay, rgba(15,23,42,.96));
+    text-align: center;
+    padding: 24px;
+  }
+  #winner.show { display: flex; }
+  #winner .w-lbl { font-size: 20px; color: var(--muted, #94a3b8); letter-spacing: 2px; text-transform: uppercase; }
+  #winner .w-num {
+    font-size: 36vw; font-weight: 900; color: var(--win, #22c55e); line-height: 1;
+    margin: 10px 0 24px;
+  }
+  #winner .btn { padding: 14px 28px; font-size: 18px; }
+
+  footer {
+    flex: 0 0 auto;
+    display: flex; gap: 8px; padding: 10px;
+    background: var(--panel, #1e293b);
+  }
+  footer .btn { flex: 1; padding: 14px 0; }
+
+  #fatal {
+    display: none;
+    margin: 10px; padding: 12px;
+    background: #ef4444; color: #fff;
+    border-radius: 10px; font-size: 13px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  @media (min-width: 600px) {
+    #board { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+    .tile { font-size: 16px; }
+    #winner .w-num { font-size: 220px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="topbar">
+      <h1>Reverse Raffle</h1>
+      <select id="themeSel" aria-label="Color theme"></select>
+    </div>
+    <div class="setuprow">
+      <span class="setgrp">
+        <label class="setlbl" for="totalInput">Numbers</label>
+        <input id="totalInput" class="setnum" type="number" inputmode="numeric" min="2" max="9999" placeholder="400" style="width:52px">
+      </span>
+      <span class="setgrp">
+        <label class="setlbl" for="colSel">Columns</label>
+        <select id="colSel" class="setnum" aria-label="Columns" style="width:66px">
+          <option value="0">Auto</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="8">8</option>
+          <option value="10">10</option>
+        </select>
+      </span>
+      <span class="setgrp">
+        <label class="setlbl" for="peopleSel">People</label>
+        <select id="peopleSel" class="setnum" aria-label="Number of people" style="width:48px">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+        </select>
+      </span>
+      <span class="setgrp">
+        <label class="setlbl" for="nthInput">Highlight</label>
+        <input id="nthInput" class="setnum" type="number" inputmode="numeric" min="0" max="400" placeholder="0" style="width:52px">
+      </span>
+    </div>
+    <div class="countbar">
+      <div class="stat"><div class="num accent" id="remaining">400</div><div class="lbl">Remaining</div><div class="chance" id="chance">—</div></div>
+      <div class="stat"><div class="num mine" id="mineCount">0/0</div><div class="lbl">My #s</div></div>
+      <div class="stat"><div class="num" id="lastNum">&mdash;</div><div class="lbl">Last Out</div></div>
+      <div class="stat"><div class="num danger" id="called">0</div><div class="lbl">Called</div></div>
+    </div>
+    <div id="msg"></div>
+    <div id="peopleBar"></div>
+    <div class="histbar" id="histbar">
+      <div class="histhead">
+        <button class="histtoggle" id="histToggle" type="button" aria-expanded="true"><span id="histCaret">&#9662;</span> Cleared history</button>
+      </div>
+      <div id="history" class="histstrip"></div>
+    </div>
+  </header>
+
+  <div id="fatal"></div>
+
+  <main>
+    <div id="board"></div>
+  </main>
+
+  <footer>
+    <button class="btn ghost" id="mineBtn" type="button">&#9733; Mine</button>
+    <button class="btn ghost" id="layoutBtn" type="button">&#9638; Fixed</button>
+    <button class="btn ghost" id="undoBtn" type="button">&#8617; Undo</button>
+    <button class="btn ghost" id="resetBtn" type="button">Reset</button>
+  </footer>
+
+  <div id="winner">
+    <div class="w-lbl">&#127942; Winner</div>
+    <div class="w-num" id="winNum">&mdash;</div>
+    <button class="btn" id="winClose" type="button">Close</button>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // If anything below throws, show it on screen instead of failing silently.
+  function showFatal(message) {
+    var f = document.getElementById("fatal");
+    if (f) { f.style.display = "block"; f.textContent = "Error: " + message; }
+  }
+  window.onerror = function (m, src, line) {
+    showFatal(m + " (line " + line + ")");
+  };
+
+  try {
+    var TOTAL = 400;
+    var STORE = "reverse-raffle-v1";
+
+    var board = document.getElementById("board");
+    var msg = document.getElementById("msg");
+    var remainingEl = document.getElementById("remaining");
+    var chanceEl = document.getElementById("chance");
+    var calledEl = document.getElementById("called");
+    var mineCountEl = document.getElementById("mineCount");
+    var lastEl = document.getElementById("lastNum");
+    var winnerBox = document.getElementById("winner");
+    var winNum = document.getElementById("winNum");
+    var themeSel = document.getElementById("themeSel");
+    var historyEl = document.getElementById("history");
+    var nthInput = document.getElementById("nthInput");
+    var histBar = document.getElementById("histbar");
+    var histToggle = document.getElementById("histToggle");
+    var histCaret = document.getElementById("histCaret");
+    var totalInput = document.getElementById("totalInput");
+    var peopleSel = document.getElementById("peopleSel");
+    var peopleBar = document.getElementById("peopleBar");
+    var colSel = document.getElementById("colSel");
+
+    // Up to 5 people, each a distinct color. Person 0 is "Me" (uses the theme accent).
+    var PLAYERS = [
+      { label: "Me", color: "var(--accent)", text: "var(--accent-text)" },
+      { label: "P2", color: "#3b82f6", text: "#ffffff" },
+      { label: "P3", color: "#22c55e", text: "#06210f" },
+      { label: "P4", color: "#ec4899", text: "#ffffff" },
+      { label: "P5", color: "#a855f7", text: "#ffffff" },
+      { label: "P6", color: "#f97316", text: "#ffffff" }
+    ];
+    var activePerson = 0;
+
+    // Color themes. Each sets the CSS variables used throughout the app.
+    var THEMES = [
+      { id: "midnight", name: "Midnight",
+        bg: "#0f172a", panel: "#1e293b", tile: "#334155", text: "#e2e8f0",
+        accent: "#f59e0b", accentText: "#0f172a", accentSoft: "#fde68a",
+        muted: "#94a3b8", danger: "#ef4444", win: "#22c55e",
+        mine: "#f59e0b", mineText: "#0f172a", nth: "#38bdf8", nthText: "#07212e", overlay: "rgba(15,23,42,.96)" },
+      { id: "michigan", name: "Maize & Blue (Michigan)",
+        bg: "#00274C", panel: "#001b38", tile: "#0a3a6b", text: "#eaf1f9",
+        accent: "#FFCB05", accentText: "#00274C", accentSoft: "#ffe173",
+        muted: "#7fa3cb", danger: "#ff7a7a", win: "#FFCB05",
+        mine: "#FFCB05", mineText: "#00274C", nth: "#4cc2ff", nthText: "#042233", overlay: "rgba(0,16,34,.96)" },
+      { id: "ohio", name: "Scarlet & Gray (Ohio St)",
+        bg: "#232326", panel: "#1a1a1c", tile: "#3a3a3e", text: "#ececed",
+        accent: "#BB0000", accentText: "#ffffff", accentSoft: "#e06666",
+        muted: "#9ea2a4", danger: "#ff6b6b", win: "#22c55e",
+        mine: "#BB0000", mineText: "#ffffff", nth: "#38bdf8", nthText: "#07212e", overlay: "rgba(20,20,22,.96)" },
+      { id: "green", name: "Casino Green & Gold",
+        bg: "#0b3d2e", panel: "#082b20", tile: "#14503b", text: "#e8f5ee",
+        accent: "#f5c542", accentText: "#0b3d2e", accentSoft: "#fbe48f",
+        muted: "#8fb6a6", danger: "#ff7a7a", win: "#ffe082",
+        mine: "#f5c542", mineText: "#0b3d2e", nth: "#4cc2ff", nthText: "#062a1e", overlay: "rgba(8,40,30,.96)" },
+      { id: "purple", name: "Royal Purple & Gold",
+        bg: "#2e1065", panel: "#241050", tile: "#4c2a85", text: "#ede9fb",
+        accent: "#fbbf24", accentText: "#2e1065", accentSoft: "#fde08a",
+        muted: "#b09bdd", danger: "#ff7a9c", win: "#fbbf24",
+        mine: "#fbbf24", mineText: "#2e1065", nth: "#4cc2ff", nthText: "#0a2433", overlay: "rgba(30,10,60,.96)" },
+      { id: "light", name: "Clean Light",
+        bg: "#eef2f6", panel: "#ffffff", tile: "#e2e8f0", text: "#0f172a",
+        accent: "#2563eb", accentText: "#ffffff", accentSoft: "#93b4f5",
+        muted: "#64748b", danger: "#dc2626", win: "#16a34a",
+        mine: "#2563eb", mineText: "#ffffff", nth: "#f97316", nthText: "#ffffff", overlay: "rgba(238,242,246,.97)" },
+      { id: "crimson", name: "Crimson & Charcoal",
+        bg: "#18181b", panel: "#232327", tile: "#2f2f33", text: "#e4e4e7",
+        accent: "#ef4444", accentText: "#ffffff", accentSoft: "#f9a8a8",
+        muted: "#9c9ca3", danger: "#f59e0b", win: "#22c55e",
+        mine: "#ef4444", mineText: "#ffffff", nth: "#38bdf8", nthText: "#07212e", overlay: "rgba(24,24,27,.96)" },
+      { id: "neon", name: "Neon Green",
+        bg: "#050a05", panel: "#0c140c", tile: "#16241a", text: "#dcffdc",
+        accent: "#39FF14", accentText: "#04140a", accentSoft: "#aaff9c",
+        muted: "#6a9d6e", danger: "#ff4d4d", win: "#39FF14",
+        mine: "#39FF14", mineText: "#04140a", nth: "#ff5cf0", nthText: "#2a0426", overlay: "rgba(5,10,5,.96)" }
+    ];
+
+    function findTheme(id) {
+      for (var i = 0; i < THEMES.length; i++) { if (THEMES[i].id === id) return THEMES[i]; }
+      return THEMES[0];
+    }
+
+    function applyTheme(id) {
+      var t = findTheme(id);
+      var r = document.documentElement.style;
+      r.setProperty("--bg", t.bg);
+      r.setProperty("--panel", t.panel);
+      r.setProperty("--tile", t.tile);
+      r.setProperty("--tile-text", t.text);
+      r.setProperty("--accent", t.accent);
+      r.setProperty("--accent-text", t.accentText);
+      r.setProperty("--accent-soft", t.accentSoft);
+      r.setProperty("--muted", t.muted);
+      r.setProperty("--danger", t.danger);
+      r.setProperty("--win", t.win);
+      r.setProperty("--mine", t.mine);
+      r.setProperty("--mine-text", t.mineText);
+      r.setProperty("--nth", t.nth);
+      r.setProperty("--nth-text", t.nthText);
+      r.setProperty("--overlay", t.overlay);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta) meta.setAttribute("content", t.panel);
+      state.theme = t.id;
+      save();
+    }
+
+    // state.called = ordered list of numbers pulled out
+    var state = load();
+    TOTAL = state.total;
+
+    function load() {
+      try {
+        var raw = localStorage.getItem(STORE);
+        if (raw) {
+          var p = JSON.parse(raw);
+          if (p && p.called && p.called.length !== undefined) {
+            if (typeof p.keepLayout !== "boolean") p.keepLayout = false;
+            if (typeof p.theme !== "string") p.theme = "midnight";
+            if (typeof p.highlightN !== "number" || p.highlightN < 0) p.highlightN = 0;
+            if (typeof p.showHistory !== "boolean") p.showHistory = true;
+            if (typeof p.total !== "number" || p.total < 2) p.total = 400;
+            if (typeof p.numPeople !== "number" || p.numPeople < 1 || p.numPeople > 6) p.numPeople = 1;
+            if (typeof p.columns !== "number" || p.columns < 0) p.columns = 0;
+            if (p.columns > 10) p.columns = 10;
+            // Migrate the old single "mine" list into the owners map (Person 0).
+            if (!p.owners || typeof p.owners !== "object") {
+              p.owners = {};
+              if (p.mine && p.mine.length) {
+                for (var mi = 0; mi < p.mine.length; mi++) p.owners[String(p.mine[mi])] = [0];
+              }
+            }
+            return p;
+          }
+        }
+      } catch (e) {}
+      return { called: [], owners: {}, numPeople: 1, columns: 0, keepLayout: false, theme: "midnight", highlightN: 0, showHistory: true, total: 400 };
+    }
+    var markMode = false;
+    function save() {
+      try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+    }
+
+    function indexOf(arr, n) {
+      for (var i = 0; i < arr.length; i++) { if (arr[i] === n) return i; }
+      return -1;
+    }
+    function isCalled(n) { return indexOf(state.called, n) !== -1; }
+
+    // Owners of a number: array of valid person indices (deduped, sorted, in range).
+    function ownersOf(n) {
+      var os = state.owners[String(n)];
+      if (!os) return [];
+      var out = [];
+      for (var i = 0; i < os.length; i++) {
+        if (os[i] >= 0 && os[i] < state.numPeople && out.indexOf(os[i]) === -1) out.push(os[i]);
+      }
+      out.sort(function (a, b) { return a - b; });
+      return out;
+    }
+    function isMine(n) { return ownersOf(n).indexOf(0) !== -1; }
+
+    // Background for an owned tile: solid for one owner, diagonal split for shared.
+    function ownerBg(os) {
+      if (os.length === 1) return PLAYERS[os[0]].color;
+      var step = 100 / os.length, stops = [];
+      for (var i = 0; i < os.length; i++) {
+        stops.push(PLAYERS[os[i]].color + " " + (i * step) + "% " + ((i + 1) * step) + "%");
+      }
+      return "linear-gradient(135deg," + stops.join(",") + ")";
+    }
+
+    function flash(text, type) {
+      msg.textContent = text || "";
+      msg.className = type || "";
+    }
+
+    // Build all tiles (1..TOTAL). Re-run whenever the drawing size changes.
+    var tiles = {};
+    function buildBoard() {
+      board.innerHTML = "";
+      tiles = {};
+      var t, frag = document.createDocumentFragment();
+      for (var i = 1; i <= TOTAL; i++) {
+        t = document.createElement("div");
+        t.className = "tile";
+        t.appendChild(document.createTextNode(String(i)));
+        t.setAttribute("data-n", String(i));
+        tiles[i] = t;
+        frag.appendChild(t);
+      }
+      board.appendChild(frag);
+      if (nthInput) nthInput.setAttribute("max", String(TOTAL));
+    }
+    buildBoard();
+
+    function render() {
+      var n, mineIn = 0, myTotal = 0;
+      for (n = 1; n <= TOTAL; n++) {
+        var os = ownersOf(n);
+        tiles[n].className = isCalled(n) ? "tile gone" : "tile";
+        var st = tiles[n].style;
+        if (os.length === 0) {
+          st.background = ""; st.color = ""; st.textShadow = "";
+        } else {
+          st.background = ownerBg(os);
+          if (os.length === 1) { st.color = PLAYERS[os[0]].text; st.textShadow = ""; }
+          else { st.color = "#ffffff"; st.textShadow = "0 1px 2px rgba(0,0,0,.75)"; }
+        }
+        if (os.indexOf(0) !== -1) { myTotal++; if (!isCalled(n)) mineIn++; }
+      }
+      var remaining = TOTAL - state.called.length;
+      remainingEl.textContent = String(remaining);
+      calledEl.textContent = String(state.called.length);
+      mineCountEl.textContent = mineIn + "/" + myTotal;
+      lastEl.textContent = state.called.length ? String(state.called[state.called.length - 1]) : "—";
+
+      if (chanceEl) {
+        if (myTotal && remaining > 0) chanceEl.textContent = Math.round(mineIn / remaining * 100) + "% win";
+        else chanceEl.textContent = "—";
+      }
+
+      renderHistory();
+
+      if (remaining === 1) {
+        var winner = 0;
+        for (n = 1; n <= TOTAL; n++) { if (!isCalled(n)) { winner = n; break; } }
+        winNum.textContent = String(winner);
+        winnerBox.className = "show";
+      }
+    }
+
+    function renderHistory() {
+      if (!historyEl) return;
+      var N = state.highlightN, html = "";
+      // Newest first
+      for (var i = state.called.length - 1; i >= 0; i--) {
+        var num = state.called[i];
+        var c = "chip";
+        if (isMine(num)) c += " mine";
+        if (N > 0 && (i + 1) % N === 0) c += " hl";
+        html += '<span class="' + c + '" title="#' + (i + 1) + ' out">' + num + '</span>';
+      }
+      historyEl.innerHTML = html;
+    }
+
+    function callNumber(value) {
+      var n = parseInt(value, 10);
+      if (!n || n < 1 || n > TOTAL) { flash("Enter a number 1–" + TOTAL, "err"); return false; }
+      if (isCalled(n)) { flash(n + " is already out", "err"); return false; }
+      if (TOTAL - state.called.length <= 1) { flash("Only the winner remains", "err"); return false; }
+      state.called.push(n);
+      save();
+      render();
+      var pos = state.called.length;
+      var isNth = state.highlightN > 0 && pos % state.highlightN === 0;
+      if (isMine(n) && isNth) flash("★⚠ YOUR number " + n + " — the " + pos + "th out!", "err");
+      else if (isMine(n)) flash("⚠ One of YOUR numbers (" + n + ") is out!", "err");
+      else if (isNth) flash("★ " + n + " is out — that's #" + pos + "!", "ok");
+      else flash(n + " is out", "ok");
+      return true;
+    }
+
+    function toggleOwner(value) {
+      var n = parseInt(value, 10);
+      if (!n || n < 1 || n > TOTAL) return false;
+      var key = String(n);
+      var os = state.owners[key] ? state.owners[key].slice() : [];
+      var pos = os.indexOf(activePerson);
+      var who = PLAYERS[activePerson].label;
+      if (pos !== -1) { os.splice(pos, 1); flash(n + " removed from " + who, ""); }
+      else { os.push(activePerson); flash(n + " added to " + who, "ok"); }
+      if (os.length) state.owners[key] = os; else delete state.owners[key];
+      save();
+      render();
+      return true;
+    }
+
+    function undo() {
+      if (!state.called.length) { flash("Nothing to undo", "err"); return; }
+      var n = state.called.pop();
+      save();
+      winnerBox.className = "";
+      render();
+      flash(n + " put back", "");
+    }
+
+    function reset() {
+      if (!window.confirm("Start a new raffle? All " + TOTAL + " numbers come back.")) return;
+      state.called = [];
+      save();
+      winnerBox.className = "";
+      render();
+      flash("New raffle ready", "");
+    }
+
+    function setTotal(value) {
+      var v = parseInt(value, 10);
+      if (!v || v < 2) {
+        flash("Use at least 2 numbers", "err");
+        if (totalInput) totalInput.value = String(TOTAL);
+        return;
+      }
+      if (v > 9999) v = 9999;
+      if (v === TOTAL) { if (totalInput) totalInput.value = String(TOTAL); return; }
+      if (state.called.length > 0) {
+        if (!window.confirm("Change to " + v + " numbers? This starts a new raffle and clears the called numbers.")) {
+          if (totalInput) totalInput.value = String(TOTAL);
+          return;
+        }
+      }
+      TOTAL = v;
+      state.total = v;
+      state.called = [];
+      // Drop any owned numbers that no longer exist on the smaller board
+      var keys = Object.keys(state.owners);
+      for (var i = 0; i < keys.length; i++) {
+        if (parseInt(keys[i], 10) > v) delete state.owners[keys[i]];
+      }
+      save();
+      buildBoard();
+      winnerBox.className = "";
+      render();
+      if (totalInput) totalInput.value = String(v);
+      flash("New raffle: numbers 1–" + v, "ok");
+    }
+
+    function mineBtnLabel() {
+      return state.numPeople > 1 ? "&#9733; Mark" : "&#9733; Mine";
+    }
+
+    function setMarkMode(on) {
+      markMode = on;
+      if (on) {
+        document.body.classList.add("marking");
+        mineBtn.className = "btn ghost active";
+        mineBtn.innerHTML = "&#9733; Done";
+        flash(state.numPeople > 1 ? "Pick a person, then tap their numbers" : "Tap your numbers to mark them", "");
+      } else {
+        document.body.classList.remove("marking");
+        mineBtn.className = "btn ghost";
+        mineBtn.innerHTML = mineBtnLabel();
+        flash("", "");
+      }
+      updatePeopleBar();
+    }
+
+    function updatePeopleBar() {
+      if (!peopleBar) return;
+      if (markMode && state.numPeople > 1) {
+        var html = "";
+        for (var pi = 0; pi < state.numPeople; pi++) {
+          var pl = PLAYERS[pi];
+          html += '<button class="pchip' + (pi === activePerson ? " active" : "") + '" type="button" data-p="' + pi +
+                  '" style="background:' + pl.color + ';color:' + pl.text + '">' + pl.label + '</button>';
+        }
+        peopleBar.innerHTML = html;
+        peopleBar.style.display = "flex";
+      } else {
+        peopleBar.innerHTML = "";
+        peopleBar.style.display = "none";
+      }
+    }
+
+    function setNumPeople(v) {
+      if (v < 1) v = 1; if (v > 6) v = 6;
+      state.numPeople = v;
+      if (activePerson >= v) activePerson = 0;
+      // Drop any ownership referencing people that no longer exist
+      var keys = Object.keys(state.owners);
+      for (var k = 0; k < keys.length; k++) {
+        var os = state.owners[keys[k]], no = [];
+        for (var j = 0; j < os.length; j++) { if (os[j] < v) no.push(os[j]); }
+        if (no.length) state.owners[keys[k]] = no; else delete state.owners[keys[k]];
+      }
+      save();
+      if (!markMode && mineBtn) mineBtn.innerHTML = mineBtnLabel();
+      updatePeopleBar();
+      render();
+    }
+
+    function setKeepLayout(on) {
+      state.keepLayout = on;
+      save();
+      if (on) {
+        document.body.classList.add("keep");
+        layoutBtn.className = "btn ghost active";
+        flash("Fixed: called numbers leave a blank gap", "");
+      } else {
+        document.body.classList.remove("keep");
+        layoutBtn.className = "btn ghost";
+        flash("Board closes up gaps when numbers are called", "");
+      }
+    }
+
+    // Wire up buttons (plain, no optional chaining)
+    var mineBtn = document.getElementById("mineBtn");
+    var layoutBtn = document.getElementById("layoutBtn");
+    if (mineBtn) mineBtn.addEventListener("click", function () { setMarkMode(!markMode); });
+    if (layoutBtn) layoutBtn.addEventListener("click", function () { setKeepLayout(!state.keepLayout); });
+    // Apply saved layout setting on load (no flash message)
+    if (state.keepLayout) {
+      document.body.classList.add("keep");
+      if (layoutBtn) layoutBtn.className = "btn ghost active";
+    }
+
+    // Build the theme dropdown, wire it, and apply the saved theme
+    if (themeSel) {
+      for (var ti = 0; ti < THEMES.length; ti++) {
+        var opt = document.createElement("option");
+        opt.value = THEMES[ti].id;
+        opt.appendChild(document.createTextNode(THEMES[ti].name));
+        themeSel.appendChild(opt);
+      }
+      themeSel.value = state.theme;
+      themeSel.addEventListener("change", function () { applyTheme(themeSel.value); });
+    }
+    applyTheme(state.theme);
+
+    // Show/hide the cleared-history strip
+    function setHistory(on) {
+      state.showHistory = on;
+      save();
+      if (histBar) {
+        if (on) histBar.classList.remove("collapsed");
+        else histBar.classList.add("collapsed");
+      }
+      if (histToggle) histToggle.setAttribute("aria-expanded", on ? "true" : "false");
+      if (histCaret) histCaret.innerHTML = on ? "&#9662;" : "&#9656;";
+    }
+    if (histToggle) histToggle.addEventListener("click", function () { setHistory(!state.showHistory); });
+    setHistory(state.showHistory);
+
+    // "Numbers in drawing" setting
+    if (totalInput) {
+      totalInput.value = String(TOTAL);
+      totalInput.addEventListener("change", function () { setTotal(totalInput.value); });
+    }
+
+    // "People" setting + person picker
+    if (mineBtn) mineBtn.innerHTML = mineBtnLabel();
+    if (peopleSel) {
+      peopleSel.value = String(state.numPeople);
+      peopleSel.addEventListener("change", function () { setNumPeople(parseInt(peopleSel.value, 10)); });
+    }
+    if (peopleBar) peopleBar.addEventListener("click", function (e) {
+      var b = e.target;
+      while (b && b !== peopleBar && b.getAttribute && b.getAttribute("data-p") === null) { b = b.parentNode; }
+      if (!b || b === peopleBar) return;
+      var p = parseInt(b.getAttribute("data-p"), 10);
+      if (p >= 0 && p < state.numPeople) { activePerson = p; updatePeopleBar(); }
+    });
+
+    // "Columns / tile size" setting (0 = Auto, defers to responsive CSS)
+    function applyColumns() {
+      if (state.columns > 0) board.style.gridTemplateColumns = "repeat(" + state.columns + ", minmax(0, 1fr))";
+      else board.style.gridTemplateColumns = "";
+    }
+    if (colSel) {
+      colSel.value = String(state.columns);
+      colSel.addEventListener("change", function () {
+        var v = parseInt(colSel.value, 10);
+        state.columns = isNaN(v) ? 0 : v;
+        save();
+        applyColumns();
+      });
+    }
+    applyColumns();
+
+    // "Highlight every Nth" setting
+    if (nthInput) {
+      if (state.highlightN > 0) nthInput.value = String(state.highlightN);
+      nthInput.addEventListener("input", function () {
+        var v = parseInt(nthInput.value, 10);
+        state.highlightN = (!v || v < 1) ? 0 : v;
+        save();
+        render();
+      });
+    }
+    var undoBtn = document.getElementById("undoBtn");
+    if (undoBtn) undoBtn.addEventListener("click", undo);
+    var resetBtn = document.getElementById("resetBtn");
+    if (resetBtn) resetBtn.addEventListener("click", reset);
+    var winClose = document.getElementById("winClose");
+    if (winClose) winClose.addEventListener("click", function () { winnerBox.className = ""; });
+
+    // Tap a number to pull it
+    board.addEventListener("click", function (e) {
+      var el = e.target;
+      while (el && el !== board && el.className.indexOf("tile") === -1) { el = el.parentNode; }
+      if (!el || el === board) return;
+      var num = el.getAttribute("data-n");
+      if (markMode) { toggleOwner(num); return; }
+      if (el.className.indexOf("gone") !== -1) return;
+      callNumber(num);
+    });
+
+    render();
+  } catch (err) {
+    showFatal(err && err.message ? err.message : String(err));
+  }
+})();
+</script>
+</body>
+</html>
