@@ -201,7 +201,8 @@
 
   footer {
     flex: 0 0 auto;
-    display: flex; gap: 8px; padding: 10px;
+    display: flex; gap: 8px;
+    padding: 10px 10px calc(22px + env(safe-area-inset-bottom, 0px));
     background: var(--panel, #1e293b);
   }
   footer .btn { flex: 1; padding: 14px 0; }
