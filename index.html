@@ -228,8 +228,14 @@
   #winner .w-lbl { font-size: 20px; color: var(--muted, #94a3b8); letter-spacing: 2px; text-transform: uppercase; }
   #winner .w-num {
     font-size: 36vw; font-weight: 900; color: var(--win, #22c55e); line-height: 1;
-    margin: 10px 0 24px;
+    margin: 10px 0 12px;
   }
+  #winner .w-who {
+    font-size: 26px; font-weight: 800; line-height: 1.2;
+    margin: 0 0 24px; max-width: 90%;
+  }
+  #winner .w-who .w-amp { color: var(--muted, #94a3b8); font-weight: 600; }
+  #winner .w-who .w-none { color: var(--muted, #94a3b8); font-size: 18px; font-weight: 600; }
   #winner .btn { padding: 14px 28px; font-size: 18px; }
 
   footer {
@@ -331,6 +337,7 @@
   <div id="winner">
     <div class="w-lbl">&#127942; Winner</div>
     <div class="w-num" id="winNum">&mdash;</div>
+    <div class="w-who" id="winWho"></div>
     <button class="btn" id="winClose" type="button">Close</button>
   </div>
 
@@ -366,6 +373,7 @@
     var lastEl = document.getElementById("lastNum");
     var winnerBox = document.getElementById("winner");
     var winNum = document.getElementById("winNum");
+    var winWho = document.getElementById("winWho");
     var themeSel = document.getElementById("themeSel");
     var historyEl = document.getElementById("history");
     var nthInput = document.getElementById("nthInput");
@@ -605,6 +613,13 @@
         var winner = 0;
         for (n = 1; n <= TOTAL; n++) { if (!isCalled(n)) { winner = n; break; } }
         winNum.textContent = String(winner);
+        if (winWho) {
+          var wos = ownersOf(winner), parts = [];
+          for (var wi = 0; wi < wos.length; wi++) {
+            parts.push('<span style="color:' + PLAYERS[wos[wi]].color + '">' + esc(playerName(wos[wi])) + '</span>');
+          }
+          winWho.innerHTML = wos.length ? parts.join(' <span class="w-amp">&amp;</span> ') : '<span class="w-none">Not marked by anyone</span>';
+        }
         winnerBox.className = "show";
       }
     }
