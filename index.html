@@ -139,12 +139,18 @@
   .stat .num.mine { color: var(--mine, #f59e0b); }
 
   /* People selector (shown in marking mode when more than one person) */
-  #peopleBar { display: none; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  #peopleBar { display: none; flex-direction: column; gap: 8px; margin-top: 8px; }
+  .pchips { display: flex; flex-wrap: wrap; gap: 6px; }
   .pchip {
     font-size: 12px; font-weight: 700; padding: 6px 10px;
     border-radius: 7px; border: 2px solid transparent; cursor: pointer;
   }
   .pchip.active { border-color: var(--tile-text, #e2e8f0); }
+  .pnameinput {
+    width: 100%; max-width: 240px; padding: 7px 10px; font-size: 13px;
+    border-radius: 7px; border: 1px solid var(--muted, #94a3b8);
+    background: var(--bg, #0f172a); color: var(--tile-text, #e2e8f0);
+  }
 
   /* Fixed-layout mode: called tiles vanish but keep their spot (no reshuffle) */
   body.keep .tile.gone {
@@ -356,6 +362,17 @@
     ];
     var activePerson = 0;
 
+    // A player's display name: custom name if set, otherwise the default label.
+    function playerName(i) {
+      var n = state.playerNames[i];
+      return (n && n.length) ? n : PLAYERS[i].label;
+    }
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
     // Color themes. Each sets the CSS variables used throughout the app.
     var THEMES = [
       { id: "midnight", name: "Midnight",
@@ -445,6 +462,8 @@
             if (typeof p.showHistory !== "boolean") p.showHistory = true;
             if (typeof p.total !== "number" || p.total < 2) p.total = 400;
             if (typeof p.numPeople !== "number" || p.numPeople < 1 || p.numPeople > 6) p.numPeople = 1;
+            if (!(p.playerNames instanceof Array)) p.playerNames = [];
+            for (var pn = 0; pn < 6; pn++) { if (typeof p.playerNames[pn] !== "string") p.playerNames[pn] = ""; }
             if (typeof p.columns !== "number" || p.columns < 0) p.columns = 0;
             if (p.columns > 8) p.columns = 8;
             // Migrate the old single "mine" list into the owners map (Person 0).
@@ -458,7 +477,7 @@
           }
         }
       } catch (e) {}
-      return { called: [], owners: {}, numPeople: 1, columns: 0, keepLayout: false, theme: "midnight", highlightN: 0, showHistory: true, total: 400 };
+      return { called: [], owners: {}, numPeople: 1, playerNames: ["", "", "", "", "", ""], columns: 0, keepLayout: false, theme: "midnight", highlightN: 0, showHistory: true, total: 400 };
     }
     var markMode = false;
     function save() {
@@ -591,7 +610,7 @@
       var key = String(n);
       var os = state.owners[key] ? state.owners[key].slice() : [];
       var pos = os.indexOf(activePerson);
-      var who = PLAYERS[activePerson].label;
+      var who = playerName(activePerson);
       if (pos !== -1) { os.splice(pos, 1); flash(n + " removed from " + who, ""); }
       else { os.push(activePerson); flash(n + " added to " + who, "ok"); }
       if (os.length) state.owners[key] = os; else delete state.owners[key];
@@ -672,13 +691,14 @@
     function updatePeopleBar() {
       if (!peopleBar) return;
       if (markMode && state.numPeople > 1) {
-        var html = "";
+        var chips = "";
         for (var pi = 0; pi < state.numPeople; pi++) {
           var pl = PLAYERS[pi];
-          html += '<button class="pchip' + (pi === activePerson ? " active" : "") + '" type="button" data-p="' + pi +
-                  '" style="background:' + pl.color + ';color:' + pl.text + '">' + pl.label + '</button>';
+          chips += '<button class="pchip' + (pi === activePerson ? " active" : "") + '" type="button" data-p="' + pi +
+                   '" style="background:' + pl.color + ';color:' + pl.text + '">' + esc(playerName(pi)) + '</button>';
         }
-        peopleBar.innerHTML = html;
+        peopleBar.innerHTML = '<div class="pchips">' + chips + '</div>' +
+          '<input id="pname" class="pnameinput" type="text" maxlength="14" placeholder="Rename selected player" value="' + esc(playerName(activePerson)) + '">';
         peopleBar.style.display = "flex";
       } else {
         peopleBar.innerHTML = "";
@@ -774,6 +794,14 @@
       if (!b || b === peopleBar) return;
       var p = parseInt(b.getAttribute("data-p"), 10);
       if (p >= 0 && p < state.numPeople) { activePerson = p; updatePeopleBar(); }
+    });
+    // Rename the selected player (delegated so the field keeps focus while typing)
+    if (peopleBar) peopleBar.addEventListener("input", function (e) {
+      if (!e.target || e.target.id !== "pname") return;
+      state.playerNames[activePerson] = e.target.value;
+      save();
+      var chip = peopleBar.querySelector('.pchip[data-p="' + activePerson + '"]');
+      if (chip) chip.textContent = playerName(activePerson);
     });
 
     // "Columns / tile size" setting (0 = Auto, defers to responsive CSS)
