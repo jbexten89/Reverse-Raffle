@@ -146,14 +146,16 @@
     border-radius: 7px; border: 2px solid transparent; cursor: pointer;
   }
   .pchip.active { border-color: var(--tile-text, #e2e8f0); }
+  .prow { display: flex; align-items: center; gap: 8px; }
   .pnameinput {
-    width: 100%; max-width: 240px; padding: 7px 10px; font-size: 13px;
+    flex: 0 0 33%; min-width: 0; padding: 7px 10px; font-size: 13px;
     border-radius: 7px; border: 1px solid var(--muted, #94a3b8);
     background: var(--bg, #0f172a); color: var(--tile-text, #e2e8f0);
   }
   .clearmarks {
-    align-self: flex-start; font-size: 12px; font-weight: 700;
-    padding: 6px 12px; border-radius: 7px;
+    flex: 0 0 33%; margin-left: auto; text-align: center;
+    font-size: 12px; font-weight: 700; white-space: nowrap;
+    padding: 7px 8px; border-radius: 7px;
     border: 1px solid var(--danger, #ef4444); background: transparent;
     color: var(--danger, #ef4444); cursor: pointer;
   }
@@ -738,6 +740,7 @@
       if (!peopleBar) return;
       if (markMode) {
         var html = "";
+        var row = "";
         if (state.numPeople > 1) {
           var chips = "";
           for (var pi = 0; pi < state.numPeople; pi++) {
@@ -745,10 +748,11 @@
             chips += '<button class="pchip' + (pi === activePerson ? " active" : "") + '" type="button" data-p="' + pi +
                      '" style="background:' + pl.color + ';color:' + pl.text + '">' + esc(playerName(pi)) + '</button>';
           }
-          html += '<div class="pchips">' + chips + '</div>' +
-            '<input id="pname" class="pnameinput" type="text" maxlength="14" placeholder="Rename selected player" value="' + esc(playerName(activePerson)) + '">';
+          html += '<div class="pchips">' + chips + '</div>';
+          row += '<input id="pname" class="pnameinput" type="text" maxlength="14" placeholder="Rename player" value="' + esc(playerName(activePerson)) + '">';
         }
-        html += '<button class="clearmarks" id="clearMarks" type="button">Clear all marks</button>';
+        row += '<button class="clearmarks" id="clearMarks" type="button">Clear all marks</button>';
+        html += '<div class="prow">' + row + '</div>';
         peopleBar.innerHTML = html;
         peopleBar.style.display = "flex";
       } else {
