@@ -74,7 +74,8 @@
   .setgrp { display: flex; flex-direction: column; align-items: center; gap: 3px; }
   .setlbl { font-size: 12px; color: var(--muted, #94a3b8); font-weight: 700; }
   .setnum {
-    width: 60px; text-align: center; font-size: 13px; font-weight: 700; padding: 6px 4px;
+    width: 60px; text-align: center; text-align-last: center;
+    font-size: 13px; font-weight: 700; padding: 6px 4px;
     border-radius: 6px; border: 1px solid var(--muted, #94a3b8);
     background: var(--bg, #0f172a); color: var(--tile-text, #e2e8f0);
     -webkit-appearance: none; appearance: none;
@@ -181,14 +182,12 @@
   /* Per-person win odds panel */
   .oddsbar { margin-top: 6px; }
   .oddsbar.collapsed .oddslist { display: none; }
-  .oddslist { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
-  .oddpill {
-    display: flex; align-items: center; gap: 5px;
-    font-size: 12px; font-weight: 700;
-    background: var(--tile, #334155); border-radius: 7px; padding: 4px 8px;
-  }
-  .oddsw { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; }
-  .oddpct { font-weight: 800; color: var(--win, #22c55e); }
+  .oddslist { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+  .oddrow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .oddsw { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
+  .oddname { font-weight: 700; }
+  .oddpct { margin-left: auto; font-weight: 800; color: var(--win, #22c55e); }
+  .oddleft { font-weight: 600; color: var(--muted, #94a3b8); }
   .histstrip {
     display: flex; align-items: center; gap: 5px;
     min-height: 34px;
@@ -615,11 +614,11 @@
       var html = "";
       for (var i = 0; i < state.numPeople; i++) {
         var pct = remaining > 0 ? (inCount[i] / remaining * 100).toFixed(2) : "0.00";
-        html += '<span class="oddpill">' +
+        html += '<div class="oddrow">' +
           '<span class="oddsw" style="background:' + PLAYERS[i].color + '"></span>' +
           '<span class="oddname">' + esc(playerName(i)) + '</span>' +
-          '<span class="oddpct">' + pct + '%</span>' +
-        '</span>';
+          '<span class="oddpct">' + pct + '% <span class="oddleft">(' + inCount[i] + ' left)</span></span>' +
+        '</div>';
       }
       oddsList.innerHTML = html;
     }
