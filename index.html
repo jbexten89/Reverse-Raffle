@@ -168,6 +168,16 @@
   }
   #histCaret { font-size: 9px; }
   .histbar.collapsed #history { display: none; }
+
+  /* Per-person win odds panel */
+  .oddsbar { margin-top: 8px; }
+  .oddsbar.collapsed .oddslist { display: none; }
+  .oddslist { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+  .oddrow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .oddsw { width: 14px; height: 14px; border-radius: 4px; flex: 0 0 auto; }
+  .oddname { font-weight: 700; }
+  .oddpct { margin-left: auto; font-weight: 800; color: var(--win, #22c55e); }
+  .oddleft { font-weight: 600; color: var(--muted, #94a3b8); }
   .histstrip {
     display: flex; align-items: center; gap: 5px;
     min-height: 34px;
@@ -287,6 +297,12 @@
       </div>
       <div id="history" class="histstrip"></div>
     </div>
+    <div class="oddsbar collapsed" id="oddsbar">
+      <div class="histhead">
+        <button class="histtoggle" id="oddsToggle" type="button" aria-expanded="false"><span id="oddsCaret">&#9656;</span> Win odds</button>
+      </div>
+      <div id="oddsList" class="oddslist"></div>
+    </div>
   </header>
 
   <div id="fatal"></div>
@@ -350,6 +366,10 @@
     var peopleSel = document.getElementById("peopleSel");
     var peopleBar = document.getElementById("peopleBar");
     var colSel = document.getElementById("colSel");
+    var oddsBar = document.getElementById("oddsbar");
+    var oddsToggle = document.getElementById("oddsToggle");
+    var oddsCaret = document.getElementById("oddsCaret");
+    var oddsList = document.getElementById("oddsList");
 
     // Up to 5 people, each a distinct color. Person 0 is "Me" (uses the theme accent).
     var PLAYERS = [
@@ -460,6 +480,7 @@
             if (typeof p.theme !== "string") p.theme = "midnight";
             if (typeof p.highlightN !== "number" || p.highlightN < 0) p.highlightN = 0;
             if (typeof p.showHistory !== "boolean") p.showHistory = true;
+            if (typeof p.showOdds !== "boolean") p.showOdds = false;
             if (typeof p.total !== "number" || p.total < 2) p.total = 400;
             if (typeof p.numPeople !== "number" || p.numPeople < 1 || p.numPeople > 6) p.numPeople = 1;
             if (!(p.playerNames instanceof Array)) p.playerNames = [];
@@ -477,7 +498,7 @@
           }
         }
       } catch (e) {}
-      return { called: [], owners: {}, numPeople: 1, playerNames: ["", "", "", "", "", ""], columns: 0, keepLayout: false, theme: "midnight", highlightN: 0, showHistory: true, total: 400 };
+      return { called: [], owners: {}, numPeople: 1, playerNames: ["", "", "", "", "", ""], columns: 0, keepLayout: false, theme: "midnight", highlightN: 0, showHistory: true, showOdds: false, total: 400 };
     }
     var markMode = false;
     function save() {
@@ -538,10 +559,11 @@
     buildBoard();
 
     function render() {
-      var n, mineIn = 0, myTotal = 0;
+      var n, p, inCount = [], totalCount = [];
+      for (p = 0; p < state.numPeople; p++) { inCount[p] = 0; totalCount[p] = 0; }
       for (n = 1; n <= TOTAL; n++) {
-        var os = ownersOf(n);
-        tiles[n].className = isCalled(n) ? "tile gone" : "tile";
+        var os = ownersOf(n), called = isCalled(n);
+        tiles[n].className = called ? "tile gone" : "tile";
         var st = tiles[n].style;
         if (os.length === 0) {
           st.background = ""; st.color = ""; st.textShadow = "";
@@ -550,8 +572,11 @@
           if (os.length === 1) { st.color = PLAYERS[os[0]].text; st.textShadow = ""; }
           else { st.color = "#ffffff"; st.textShadow = "0 1px 2px rgba(0,0,0,.75)"; }
         }
-        if (os.indexOf(0) !== -1) { myTotal++; if (!isCalled(n)) mineIn++; }
+        for (var oi = 0; oi < os.length; oi++) {
+          totalCount[os[oi]]++; if (!called) inCount[os[oi]]++;
+        }
       }
+      var mineIn = inCount[0] || 0, myTotal = totalCount[0] || 0;
       var remaining = TOTAL - state.called.length;
       remainingEl.textContent = String(remaining);
       calledEl.textContent = String(state.called.length);
@@ -563,6 +588,7 @@
         else chanceEl.textContent = "—";
       }
 
+      renderOdds(inCount, remaining);
       renderHistory();
 
       if (remaining === 1) {
@@ -571,6 +597,20 @@
         winNum.textContent = String(winner);
         winnerBox.className = "show";
       }
+    }
+
+    function renderOdds(inCount, remaining) {
+      if (!oddsList || !state.showOdds) return;
+      var html = "";
+      for (var i = 0; i < state.numPeople; i++) {
+        var pct = remaining > 0 ? (inCount[i] / remaining * 100).toFixed(2) : "0.00";
+        html += '<div class="oddrow">' +
+          '<span class="oddsw" style="background:' + PLAYERS[i].color + '"></span>' +
+          '<span class="oddname">' + esc(playerName(i)) + '</span>' +
+          '<span class="oddpct">' + pct + '% <span class="oddleft">(' + inCount[i] + ' left)</span></span>' +
+        '</div>';
+      }
+      oddsList.innerHTML = html;
     }
 
     function renderHistory() {
@@ -774,6 +814,21 @@
     }
     if (histToggle) histToggle.addEventListener("click", function () { setHistory(!state.showHistory); });
     setHistory(state.showHistory);
+
+    // Show/hide the per-person win odds panel
+    function setOdds(on) {
+      state.showOdds = on;
+      save();
+      if (oddsBar) {
+        if (on) oddsBar.classList.remove("collapsed");
+        else oddsBar.classList.add("collapsed");
+      }
+      if (oddsToggle) oddsToggle.setAttribute("aria-expanded", on ? "true" : "false");
+      if (oddsCaret) oddsCaret.innerHTML = on ? "&#9662;" : "&#9656;";
+      render();
+    }
+    if (oddsToggle) oddsToggle.addEventListener("click", function () { setOdds(!state.showOdds); });
+    setOdds(state.showOdds);
 
     // "Numbers in drawing" setting
     if (totalInput) {
