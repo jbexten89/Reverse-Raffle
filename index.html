@@ -148,17 +148,18 @@
   .pchip.active { border-color: var(--tile-text, #e2e8f0); }
   .prow { display: flex; align-items: center; gap: 8px; }
   .pnameinput {
-    flex: 0 0 33%; min-width: 0; padding: 7px 10px; font-size: 13px;
+    flex: 1 1 0; min-width: 0; padding: 7px 10px; font-size: 13px;
     border-radius: 7px; border: 1px solid var(--muted, #94a3b8);
     background: var(--bg, #0f172a); color: var(--tile-text, #e2e8f0);
   }
-  .clearmarks {
-    flex: 0 0 33%; margin-left: auto; text-align: center;
+  .clearnames, .clearmarks {
+    flex: 1 1 0; min-width: 0; text-align: center;
     font-size: 12px; font-weight: 700; white-space: nowrap;
-    padding: 7px 8px; border-radius: 7px;
-    border: 1px solid var(--danger, #ef4444); background: transparent;
-    color: var(--danger, #ef4444); cursor: pointer;
+    padding: 7px 6px; border-radius: 7px;
+    background: transparent; cursor: pointer;
   }
+  .clearnames { border: 1px solid var(--muted, #94a3b8); color: var(--muted, #94a3b8); }
+  .clearmarks { border: 1px solid var(--danger, #ef4444); color: var(--danger, #ef4444); }
 
   /* Fixed-layout mode: called tiles vanish but keep their spot (no reshuffle) */
   body.keep .tile.gone {
@@ -750,8 +751,9 @@
           }
           html += '<div class="pchips">' + chips + '</div>';
           row += '<input id="pname" class="pnameinput" type="text" maxlength="14" placeholder="Rename player" value="' + esc(playerName(activePerson)) + '">';
+          row += '<button class="clearnames" id="clearNames" type="button">Clear names</button>';
         }
-        row += '<button class="clearmarks" id="clearMarks" type="button">Clear all marks</button>';
+        row += '<button class="clearmarks" id="clearMarks" type="button">Clear marks</button>';
         html += '<div class="prow">' + row + '</div>';
         peopleBar.innerHTML = html;
         peopleBar.style.display = "flex";
@@ -759,6 +761,15 @@
         peopleBar.innerHTML = "";
         peopleBar.style.display = "none";
       }
+    }
+
+    function clearNames() {
+      if (!window.confirm("Reset all player names to defaults?")) return;
+      state.playerNames = ["", "", "", "", "", ""];
+      save();
+      updatePeopleBar();
+      render();
+      flash("Player names reset", "");
     }
 
     function clearAllMarks() {
@@ -870,7 +881,11 @@
       peopleSel.value = String(state.numPeople);
       peopleSel.addEventListener("change", function () { setNumPeople(parseInt(peopleSel.value, 10)); });
     }
+    if (peopleBar) peopleBar.addEventListener("focusin", function (e) {
+      if (e.target && e.target.id === "pname") { var el = e.target; setTimeout(function () { el.select(); }, 0); }
+    });
     if (peopleBar) peopleBar.addEventListener("click", function (e) {
+      if (e.target && e.target.id === "clearNames") { clearNames(); return; }
       if (e.target && e.target.id === "clearMarks") { clearAllMarks(); return; }
       var b = e.target;
       while (b && b !== peopleBar && b.getAttribute && b.getAttribute("data-p") === null) { b = b.parentNode; }
